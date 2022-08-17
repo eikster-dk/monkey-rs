@@ -35,8 +35,12 @@ impl<'a> Lexer<'a> {
             b'+' => Token::Plus,
             b'{' => Token::LBrace,
             b'}' => Token::RBrace,
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.read_identifier(),
-            b'0'..=b'9' => self.read_number(),
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
+                return self.read_identifier();
+            }
+            b'0'..=b'9' => {
+                return self.read_number();
+            }
             0 => Token::EOF,
             _ => Token::Illegal,
         };
@@ -44,7 +48,6 @@ impl<'a> Lexer<'a> {
         self.read_char();
         tok
     }
-
 
     // posible improvement: move away from ASCII and improve the readChar to iterate over UTF8
     fn read_char(&mut self) {
@@ -81,19 +84,17 @@ impl<'a> Lexer<'a> {
         loop {
             match self.current_char {
                 b'0'..=b'9' => {
-                    println!("going to next");
                     self.read_char();
                 }
                 _ => {
-                    println!("breaking");
                     break;
-                },
+                }
             }
         }
 
         let slice = &self.input[pos..self.position];
 
-        let n :isize = slice.trim().parse().unwrap();
+        let n: isize = slice.trim().parse().unwrap();
 
         Token::Int(n)
     }
@@ -137,6 +138,7 @@ mod tests {
             Token::Identifier("x".to_string()),
             Token::Assign,
             Token::Int(5),
+            Token::SemiColon,
             Token::EOF,
         ];
 
@@ -161,7 +163,7 @@ let add = fn(x,y) {
 let result = add(five, ten);
 "#;
 
-        let tests = vec![
+        let expected_tokens = vec![
             Token::Let,
             Token::Identifier("five".to_string()),
             Token::Assign,
@@ -174,6 +176,7 @@ let result = add(five, ten);
             Token::SemiColon,
             Token::Let,
             Token::Identifier("add".to_string()),
+            Token::Assign,
             Token::Function,
             Token::LParenthesis,
             Token::Identifier("x".to_string()),
@@ -201,10 +204,10 @@ let result = add(five, ten);
 
         let mut l = Lexer::new(input);
 
-        for test in tests {
-            let tok = l.next_token();
+        for expected_token in expected_tokens {
+            let token = l.next_token();
 
-            assert_eq!(test, tok);
+            assert_eq!(expected_token, token);
         }
     }
 }

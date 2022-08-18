@@ -2,20 +2,20 @@ use std::usize;
 
 use crate::tokens::Token;
 
-pub struct Lexer<'a> {
-    input: &'a str,
+pub struct Lexer {
+    input: Vec<char>,
     position: usize,
     read_position: usize,
-    current_char: u8,
+    current_char: char, // refactor to use Option<char>
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
+impl Lexer {
+    pub fn new(input: &str) -> Self {
         let mut l = Lexer {
-            input,
+            input: input.chars().collect(),
             position: 0,
             read_position: 0,
-            current_char: 0,
+            current_char: '\0',
         };
 
         l.read_char();
@@ -27,21 +27,21 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
 
         let tok = match self.current_char {
-            b'=' => Token::Assign,
-            b';' => Token::SemiColon,
-            b'(' => Token::LParenthesis,
-            b')' => Token::RParenthesis,
-            b',' => Token::Comma,
-            b'+' => Token::Plus,
-            b'{' => Token::LBrace,
-            b'}' => Token::RBrace,
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
+            '=' => Token::Assign,
+            ';' => Token::SemiColon,
+            '(' => Token::LParenthesis,
+            ')' => Token::RParenthesis,
+            ',' => Token::Comma,
+            '+' => Token::Plus,
+            '{' => Token::LBrace,
+            '}' => Token::RBrace,
+            x if x.is_alphabetic() || x == '_' => {
                 return self.read_identifier();
             }
-            b'0'..=b'9' => {
+            x if x.is_numeric() => {
                 return self.read_number();
             }
-            0 => Token::EOF,
+            '\0' => Token::EOF,
             _ => Token::Illegal,
         };
 
@@ -49,12 +49,11 @@ impl<'a> Lexer<'a> {
         tok
     }
 
-    // posible improvement: move away from ASCII and improve the readChar to iterate over UTF8
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
-            self.current_char = 0
+            self.current_char = '\0';
         } else {
-            self.current_char = self.input.as_bytes()[self.read_position]
+            self.current_char = self.input[self.read_position];
         }
 
         self.position = self.read_position;
@@ -63,16 +62,21 @@ impl<'a> Lexer<'a> {
 
     fn read_identifier(&mut self) -> Token {
         let pos = self.position;
-        while is_letter(self.current_char) {
-            self.read_char();
+
+        loop {
+            match self.current_char {
+                x if x.is_alphabetic() || x == '_' => self.read_char(),
+                _ => break,
+            }
         }
 
-        let x = &self.input[pos..self.position];
+        let slice = &self.input[pos..self.position];
+        let word = String::from_iter(slice);
 
-        let token = match x {
+        let token = match word.as_str() {
             "fn" => Token::Function,
             "let" => Token::Let,
-            _ => Token::Identifier(x.to_string()),
+            _ => Token::Identifier(word),
         };
 
         token
@@ -83,18 +87,17 @@ impl<'a> Lexer<'a> {
 
         loop {
             match self.current_char {
-                b'0'..=b'9' => {
+                x if x.is_numeric() => {
                     self.read_char();
                 }
-                _ => {
-                    break;
-                }
+                _ => break,
+                
             }
         }
 
         let slice = &self.input[pos..self.position];
 
-        let n: isize = slice.trim().parse().unwrap();
+        let n: isize = String::from_iter(slice).parse().unwrap();
 
         Token::Int(n)
     }
@@ -102,16 +105,13 @@ impl<'a> Lexer<'a> {
     fn skip_whitespace(&mut self) {
         loop {
             match self.current_char {
-                b' ' | b'\t' | b'\n' | b'\r' => self.read_char(),
+                x if x.is_whitespace() => self.read_char(),
                 _ => break,
             }
         }
     }
 }
 
-fn is_letter(ch: u8) -> bool {
-    b'a' <= ch && ch <= b'z' || b'A' <= ch && ch <= b'Z' || ch == b'_'
-}
 
 #[cfg(test)]
 mod tests {
@@ -126,7 +126,7 @@ mod tests {
         let t = l.read_number();
 
         assert_eq!(Token::Int(12), t);
-        assert_eq!(b'q', l.current_char);
+        assert_eq!('q', l.current_char);
     }
 
     #[test]

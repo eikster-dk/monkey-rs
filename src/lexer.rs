@@ -1,117 +1,100 @@
-use std::usize;
+use std::{iter::Peekable, str::Chars};
 
 use crate::tokens::Token;
 
-pub struct Lexer {
-    input: Vec<char>,
-    position: usize,
-    read_position: usize,
-    current_char: char, // refactor to use Option<char>
+pub struct Lexer<'a> {
+    input: Peekable<Chars<'a>>,
 }
 
-impl Lexer {
-    pub fn new(input: &str) -> Self {
-        let mut l = Lexer {
-            input: input.chars().collect(),
-            position: 0,
-            read_position: 0,
-            current_char: '\0',
-        };
-
-        l.read_char();
-
-        return l;
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Lexer {
+            input: input.chars().peekable(),
+        }
     }
 
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
-        let tok = match self.current_char {
-            '=' => Token::Assign,
-            ';' => Token::SemiColon,
-            '(' => Token::LParenthesis,
-            ')' => Token::RParenthesis,
-            ',' => Token::Comma,
-            '+' => Token::Plus,
-            '{' => Token::LBrace,
-            '}' => Token::RBrace,
-            x if x.is_alphabetic() || x == '_' => {
-                return self.read_identifier();
+        let tok = match self.read_char() {
+            Some('=') => Token::Assign,
+            Some(';') => Token::SemiColon,
+            Some('(') => Token::LParenthesis,
+            Some(')') => Token::RParenthesis,
+            Some(',') => Token::Comma,
+            Some('+') => Token::Plus,
+            Some('{') => Token::LBrace,
+            Some('}') => Token::RBrace,
+            Some(x) if x.is_alphabetic() || x == '_' => {
+                return self.read_identifier(x);
             }
-            x if x.is_numeric() => {
-                return self.read_number();
+            Some(x) if x.is_numeric() => {
+                return self.read_number(x);
             }
-            '\0' => Token::EOF,
+            None => Token::EOF,
             _ => Token::Illegal,
         };
 
-        self.read_char();
         tok
     }
 
-    fn read_char(&mut self) {
-        if self.read_position >= self.input.len() {
-            self.current_char = '\0';
-        } else {
-            self.current_char = self.input[self.read_position];
-        }
-
-        self.position = self.read_position;
-        self.read_position += 1;
+    fn read_char(&mut self) -> Option<char> {
+        self.input.next()
     }
 
-    fn read_identifier(&mut self) -> Token {
-        let pos = self.position;
+    fn read_identifier(&mut self, ch: char) -> Token {
+        let mut s = String::new();
+        s.push(ch);
 
         loop {
-            match self.current_char {
-                x if x.is_alphabetic() || x == '_' => self.read_char(),
+            match self.input.peek() {
+                Some(x) if x.is_alphabetic() || x == &'_' => {
+                    let x = self.read_char();
+                    s.push(x.unwrap())
+                }
                 _ => break,
             }
         }
 
-        let slice = &self.input[pos..self.position];
-        let word = String::from_iter(slice);
-
-        let token = match word.as_str() {
+        let token = match s.as_str() {
             "fn" => Token::Function,
             "let" => Token::Let,
-            _ => Token::Identifier(word),
+            _ => Token::Identifier(s),
         };
 
         token
     }
 
-    fn read_number(&mut self) -> Token {
-        let pos = self.position;
+    fn read_number(&mut self, ch: char) -> Token {
+        let mut s = String::new();
+        s.push(ch);
 
         loop {
-            match self.current_char {
-                x if x.is_numeric() => {
-                    self.read_char();
+            match self.input.peek() {
+                Some(x) if x.is_numeric() => {
+                    let ch = self.read_char().unwrap();
+                    s.push(ch);
                 }
                 _ => break,
-                
             }
         }
 
-        let slice = &self.input[pos..self.position];
-
-        let n: isize = String::from_iter(slice).parse().unwrap();
+        let n: isize = s.parse().unwrap();
 
         Token::Int(n)
     }
 
     fn skip_whitespace(&mut self) {
         loop {
-            match self.current_char {
-                x if x.is_whitespace() => self.read_char(),
+            match self.input.peek() {
+                Some(x) if x.is_whitespace() => {
+                    self.input.next();
+                }
                 _ => break,
             }
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -119,14 +102,28 @@ mod tests {
     use crate::tokens::Token;
 
     #[test]
-    fn parse_number() {
-        let input = "12q";
+    fn simple_parse_test() {
+        let input = "=+(){},;^";
+
         let mut l = Lexer::new(input);
 
-        let t = l.read_number();
+        let expected_results = [
+            Token::Assign,
+            Token::Plus,
+            Token::LParenthesis,
+            Token::RParenthesis,
+            Token::LBrace,
+            Token::RBrace,
+            Token::Comma,
+            Token::SemiColon,
+            Token::Illegal,
+            Token::EOF,
+        ];
 
-        assert_eq!(Token::Int(12), t);
-        assert_eq!('q', l.current_char);
+        for expected in expected_results {
+            let actual = l.next_token();
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]

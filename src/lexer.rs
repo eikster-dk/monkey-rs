@@ -13,7 +13,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn next_token(&mut self) -> Token {
+    fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
         let tok = match self.read_char() {
@@ -120,6 +120,19 @@ impl<'a> Lexer<'a> {
                 }
                 _ => break,
             }
+        }
+    }
+}
+
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let tok = self.next_token();
+
+        match tok {
+            Token::EOF => None,
+            _ => Some(tok)
         }
     }
 }

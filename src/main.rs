@@ -1,6 +1,8 @@
-use monkey_rs::{tokens};
+use std::{io, io::BufReader};
+
+use monkey_rs::repl;
 
 fn main() {
-    let x = tokens::Token::Assign;
-    println!("Hello, world!");
+    let reader = BufReader::new(io::stdin());
+    repl::start(reader, io::stdout()).unwrap();
 }

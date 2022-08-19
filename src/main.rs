@@ -1,3 +1,8 @@
+use std::{io, io::BufReader};
+
+use monkey_rs::repl;
+
 fn main() {
-    println!("Hello, world!");
+    let reader = BufReader::new(io::stdin());
+    repl::start(reader, io::stdout()).unwrap();
 }

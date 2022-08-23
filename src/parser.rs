@@ -101,6 +101,7 @@ impl<'a> Parser<'a> {
             Token::Int(number) => Expression::Integer(number),
             Token::Bang | Token::Minus => self.parse_prefix_operator(token),
             Token::Boolean(b) => Expression::Bool(b),
+            Token::LParenthesis => self.parse_group_expression(),
             _ => panic!("TODO: Implement more operators??: {:?}", token),
         };
 
@@ -161,6 +162,19 @@ impl<'a> Parser<'a> {
         let right = self.parse_expression(precedence, t);
 
         Expression::Infix(Box::new(left), operator, Box::new(right))
+    }
+
+    fn parse_group_expression(&mut self) -> Expression {
+        let t = self.lexer.next().unwrap(); // todo: fix unwrap
+        let exp = self.parse_expression(Precedence::Lowest, t);
+
+        if let Some(Token::RParenthesis) = self.lexer.peek() {
+            self.lexer.next();
+        } else {
+            // todo handle error 
+        } 
+
+        exp
     }
 
     fn token_precedence(token: &Token) -> Precedence {
@@ -375,7 +389,12 @@ mod tests {
                 "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
             ),
             ("3 > 5 == false","((3 > 5) == false)"),
-            ("3 < 5 == true","((3 < 5) == true)")
+            ("3 < 5 == true","((3 < 5) == true)"),
+            ("1 + (2 + 3) +4", "((1 + (2 + 3)) + 4)"),
+            ("(5 + 5) * 2", "((5 + 5) * 2)"),
+            ("2 / (5 + 5)", "(2 / (5 + 5))"),
+            ("-(5 + 5)", "(-(5 + 5))"),
+            ("!(true == true)", "(!(true == true))" )
         ];
 
         for (input, result) in pair {

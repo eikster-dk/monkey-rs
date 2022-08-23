@@ -98,15 +98,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, precedence: Precedence, token: Token) -> Expression {
-        let left = match token {
+        let mut left = match token {
             Token::Identifier(name) => Expression::Identifier(name),
             Token::Int(number) => Expression::Integer(number),
             Token::Bang | Token::Minus => self.parse_prefix_operator(token),
             _ => panic!("TODO: Implement more operators??: {:?}", token),
         };
 
-        while let Some(t) = self.lexer.peek() {
-            if t != &Token::Semicolon && precedence < Parser::token_precedence(&t) {
+        while let Some(next_token) = self.lexer.peek() {
+            if next_token != &Token::Semicolon && precedence < Parser::token_precedence(&next_token)
+            {
                 let t = self.lexer.next().unwrap();
                 match t {
                     Token::Plus
@@ -116,15 +117,17 @@ impl<'a> Parser<'a> {
                     | Token::GT
                     | Token::LT
                     | Token::Equal
-                    | Token::NotEqual => return self.parse_infix_expression(t, left),
-                    _ => return left,
+                    | Token::NotEqual => left = self.parse_infix_expression(t, left),
+                    _ => (),
                 }
             } else {
                 return left;
             }
         }
+
         left
     }
+
 
     fn parse_prefix_operator(&mut self, token: Token) -> Expression {
         let prefix = match token {
@@ -142,8 +145,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_infix_expression(&mut self, token: Token, left: Expression) -> Expression {
-        let precedence = Parser::token_precedence(&token);
-
         let operator = match token {
             Token::Plus => InfixOperator::Plus,
             Token::Minus => InfixOperator::Minus,
@@ -156,10 +157,12 @@ impl<'a> Parser<'a> {
             _ => panic!("todo: handle incorrect operator token"),
         };
 
-        let t = self.lexer.next().unwrap(); // TODO: don't use unwrap
+        let precedence = Parser::token_precedence(&token);
+        let t = self.lexer.next().unwrap();
+
         let right = self.parse_expression(precedence, t);
 
-        Expression::Infix(operator, Box::new(left), Box::new(right))
+        Expression::Infix(Box::new(left), operator, Box::new(right))
     }
 
     fn token_precedence(token: &Token) -> Precedence {
@@ -168,12 +171,12 @@ impl<'a> Parser<'a> {
             Token::LT | Token::GT => Precedence::LessGreater,
             Token::Slash | Token::Asterisk => Precedence::Product,
             Token::Equal | Token::NotEqual => Precedence::Equals,
-            _ => panic!("TODO: handle if a token somehow get this far"),
+            _ => Precedence::Lowest,
         }
     }
 }
 
-#[derive(PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd)]
 enum Precedence {
     Lowest = 0,
     Equals,      // ==
@@ -283,43 +286,43 @@ mod tests {
 
         let expected_statements = vec![
             new_infix_expression(
+                Expression::Integer(5),
                 InfixOperator::Plus,
                 Expression::Integer(5),
-                Expression::Integer(5),
             ),
             new_infix_expression(
+                Expression::Integer(5),
                 InfixOperator::Minus,
                 Expression::Integer(5),
-                Expression::Integer(5),
             ),
             new_infix_expression(
+                Expression::Integer(5),
                 InfixOperator::Multiply,
                 Expression::Integer(5),
-                Expression::Integer(5),
             ),
             new_infix_expression(
+                Expression::Integer(5),
                 InfixOperator::Divide,
                 Expression::Integer(5),
-                Expression::Integer(5),
             ),
             new_infix_expression(
+                Expression::Integer(5),
                 InfixOperator::GT,
                 Expression::Integer(5),
-                Expression::Integer(5),
             ),
             new_infix_expression(
+                Expression::Integer(5),
                 InfixOperator::LT,
                 Expression::Integer(5),
-                Expression::Integer(5),
             ),
             new_infix_expression(
+                Expression::Integer(5),
                 InfixOperator::Equals,
                 Expression::Integer(5),
-                Expression::Integer(5),
             ),
             new_infix_expression(
-                InfixOperator::NotEquals,
                 Expression::Integer(5),
+                InfixOperator::NotEquals,
                 Expression::Integer(5),
             ),
         ];
@@ -327,12 +330,39 @@ mod tests {
         validate_and_parse_program(input, expected_statements);
     }
 
+    #[test]
+    fn test_operator_precedence_parsing() {
+        let pair = vec![
+            ("-a * b", "((-a) * b)"),
+            ("!-a", "(!(-a))"),
+            ("a + b + c", "((a + b) + c)"),
+            ("a + b - c", "((a + b) - c)"),
+            ("a * b * c", "((a * b) * c)"),
+            ("a * b / c", "((a * b) / c)"),
+            ("a + b / c", "(a + (b / c))"),
+            ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
+            ("3 + 4; -5 * 5", "(3 + 4)\n((-5) * 5)"),
+            ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
+            ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
+            ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+        ];
+
+        for (input, result) in pair {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            println!("{:?}", program.statements);
+            assert_eq!(program.to_string(), result.to_string());
+        }
+    }
+
     fn new_infix_expression(
-        operator: InfixOperator,
         left: Expression,
+        operator: InfixOperator,
         right: Expression,
     ) -> Statement {
-        Statement::Expression(Expression::Infix(operator, Box::new(left), Box::new(right)))
+        Statement::Expression(Expression::Infix(Box::new(left), operator, Box::new(right)))
     }
 
     fn validate_and_parse_program(input: &str, expected_statements: Vec<Statement>) {

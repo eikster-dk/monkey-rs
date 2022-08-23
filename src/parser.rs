@@ -58,21 +58,19 @@ impl<'a> Parser<'a> {
         };
 
         if let Some(Token::Assign) = self.lexer.next() {
+            let t = self.lexer.next().unwrap();
+            let expression = self.parse_expression(Precedence::Lowest, t);
+
+            // improve this:
+            while Some(&Token::Semicolon) != self.lexer.peek() {
+                self.lexer.next();
+            }
             self.lexer.next();
+
+            Ok(Statement::Let(name, expression))
         } else {
             return Err("Expected to find an assign token".to_string());
         }
-
-        //TODO: fix expression part
-        //TODO: go to next token until we reach semicolon
-
-        // improve this:
-        while Some(&Token::Semicolon) != self.lexer.peek() {
-            self.lexer.next();
-        }
-        self.lexer.next();
-
-        Ok(Statement::Let(name, Expression::Identifier("".to_string())))
     }
 
     fn parse_return_statement(&mut self) -> Result<Statement, String> {
@@ -102,6 +100,7 @@ impl<'a> Parser<'a> {
             Token::Identifier(name) => Expression::Identifier(name),
             Token::Int(number) => Expression::Integer(number),
             Token::Bang | Token::Minus => self.parse_prefix_operator(token),
+            Token::Boolean(b) => Expression::Bool(b),
             _ => panic!("TODO: Implement more operators??: {:?}", token),
         };
 
@@ -127,7 +126,6 @@ impl<'a> Parser<'a> {
 
         left
     }
-
 
     fn parse_prefix_operator(&mut self, token: Token) -> Expression {
         let prefix = match token {
@@ -201,9 +199,9 @@ mod tests {
         let foo = 838383;
 "#;
         let expected_statements = vec![
-            Statement::Let("x".to_string(), Expression::Identifier("".to_string())),
-            Statement::Let("y".to_string(), Expression::Identifier("".to_string())),
-            Statement::Let("foo".to_string(), Expression::Identifier("".to_string())),
+            Statement::Let("x".to_string(), Expression::Integer(5)),
+            Statement::Let("y".to_string(), Expression::Integer(10)),
+            Statement::Let("foo".to_string(), Expression::Integer(838383)),
         ];
 
         validate_and_parse_program(input, expected_statements);
@@ -255,6 +253,8 @@ mod tests {
         let input = r#"
             !5;
             -15;
+            !true;
+            !false;
         "#;
 
         let expected_statements = vec![
@@ -265,6 +265,14 @@ mod tests {
             Statement::Expression(Expression::Prefix(
                 PrefixOperator::Minus,
                 Box::new(Expression::Integer(15)),
+            )),
+            Statement::Expression(Expression::Prefix(
+                PrefixOperator::Bang,
+                Box::new(Expression::Bool(true)),
+            )),
+            Statement::Expression(Expression::Prefix(
+                PrefixOperator::Bang,
+                Box::new(Expression::Bool(false)),
             )),
         ];
 
@@ -282,6 +290,9 @@ mod tests {
             5 < 5;
             5 == 5;
             5 != 5;
+            true == true;
+            true != false;
+            false == false;
         "#;
 
         let expected_statements = vec![
@@ -325,6 +336,21 @@ mod tests {
                 InfixOperator::NotEquals,
                 Expression::Integer(5),
             ),
+            new_infix_expression(
+                Expression::Bool(true),
+                InfixOperator::Equals,
+                Expression::Bool(true),
+            ),
+            new_infix_expression(
+                Expression::Bool(true),
+                InfixOperator::NotEquals,
+                Expression::Bool(false),
+            ),
+            new_infix_expression(
+                Expression::Bool(false),
+                InfixOperator::Equals,
+                Expression::Bool(false),
+            ),
         ];
 
         validate_and_parse_program(input, expected_statements);
@@ -344,7 +370,12 @@ mod tests {
             ("3 + 4; -5 * 5", "(3 + 4)\n((-5) * 5)"),
             ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
             ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
-            ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+            (
+                "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+            ),
+            ("3 > 5 == false","((3 > 5) == false)"),
+            ("3 < 5 == true","((3 < 5) == true)")
         ];
 
         for (input, result) in pair {
@@ -355,6 +386,21 @@ mod tests {
             println!("{:?}", program.statements);
             assert_eq!(program.to_string(), result.to_string());
         }
+    }
+
+    #[test]
+    fn test_parsing_boolean_expression() {
+        let input = r#"
+            true;
+            false;
+        "#;
+
+        let expected_statements = vec![
+            Statement::Expression(Expression::Bool(true)),
+            Statement::Expression(Expression::Bool(false)),
+        ];
+
+        validate_and_parse_program(input, expected_statements);
     }
 
     fn new_infix_expression(

@@ -23,6 +23,7 @@ impl fmt::Display for Statement {
 pub enum Expression {
     Identifier(String),
     Integer(isize),
+    Bool(bool),
     Prefix(PrefixOperator, Box<Expression>),
     Infix(Box<Expression>, InfixOperator, Box<Expression>),
 }
@@ -32,6 +33,7 @@ impl fmt::Display for Expression {
         let s = match self {
             Expression::Identifier(ident) => format!("{}", ident),
             Expression::Integer(int) => format!("{}", int),
+            Expression::Bool(b) => format!("{}", b),
             Expression::Prefix(op, exp) => format!("({}{})", op, exp),
             Expression::Infix(left, op, right) => format!("({} {} {})", left, op, right),
         };

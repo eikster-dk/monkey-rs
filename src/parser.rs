@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 
 use crate::{
-    ast::{Expression, InfixOperator, PrefixOperator, Program, Statement},
+    ast::{BlockStatement, Expression, InfixOperator, PrefixOperator, Program, Statement},
     lexer::Lexer,
     tokens::Token,
 };
@@ -21,34 +21,22 @@ impl<'a> Parser<'a> {
 
     pub fn parse_program(&mut self) -> Program {
         let mut stmts = vec![];
-
         while let Some(token) = self.lexer.next() {
-            match token {
-                Token::Let => {
-                    let stmt = self.parse_let_statement();
-                    match stmt {
-                        Ok(s) => stmts.push(s),
-                        Err(e) => self.errors.push(e),
-                    }
-                }
-                Token::Return => {
-                    let stmt = self.parse_return_statement();
-                    match stmt {
-                        Ok(s) => stmts.push(s),
-                        Err(e) => self.errors.push(e),
-                    }
-                }
-                token => {
-                    let stmt = self.parse_expression_statement(token);
-                    match stmt {
-                        Ok(s) => stmts.push(s),
-                        Err(e) => self.errors.push(e),
-                    }
-                }
-            };
+            let result = self.parse_statement(token);
+            match result {
+                Ok(s) => stmts.push(s),
+                Err(e) => self.errors.push(e),
+            }
         }
-
         Program::new(stmts)
+    }
+
+    fn parse_statement(&mut self, token: Token) -> Result<Statement, String> {
+        match token {
+            Token::Let => self.parse_let_statement(),
+            Token::Return => self.parse_return_statement(),
+            token => self.parse_expression_statement(token),
+        }
     }
 
     fn parse_let_statement(&mut self) -> Result<Statement, String> {
@@ -102,6 +90,7 @@ impl<'a> Parser<'a> {
             Token::Bang | Token::Minus => self.parse_prefix_operator(token),
             Token::Boolean(b) => Expression::Bool(b),
             Token::LParenthesis => self.parse_group_expression(),
+            Token::If => self.parse_if_expression(),
             _ => panic!("TODO: Implement more operators??: {:?}", token),
         };
 
@@ -171,10 +160,55 @@ impl<'a> Parser<'a> {
         if let Some(Token::RParenthesis) = self.lexer.peek() {
             self.lexer.next();
         } else {
-            // todo handle error 
-        } 
+        }
 
         exp
+    }
+
+    fn parse_if_expression(&mut self) -> Expression {
+        if !self.expect_token(Token::LParenthesis) {
+            panic!("TODO: fix error handling")
+        }
+
+        let t = self.lexer.next().unwrap();
+        let condition = self.parse_expression(Precedence::Lowest, t);
+
+        if !self.expect_token(Token::RParenthesis) {
+            panic!("TODO: fix error handling")
+        }
+        if !self.expect_token(Token::LBrace) {
+            panic!("TODO: fix error handling")
+        };
+
+        let consequence = self.parse_block_statement();
+
+        Expression::If(Box::new(condition), consequence, vec![])
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let mut stmts: Vec<Statement> = vec![];
+        while Some(&Token::RBrace) != self.lexer.peek() {
+            let token = self.lexer.next().unwrap();
+            let stmt = self.parse_statement(token);
+            match stmt {
+                Ok(s) => stmts.push(s),
+                Err(e) => self.errors.push(e),
+            }
+        }
+
+        println!("what is stmts: {:?}", stmts);
+
+        self.lexer.next();
+        stmts
+    }
+
+    fn expect_token(&mut self, t: Token) -> bool {
+        if Some(&t) == self.lexer.peek() {
+            self.lexer.next();
+            return true;
+        }
+
+        false
     }
 
     fn token_precedence(token: &Token) -> Precedence {
@@ -388,13 +422,13 @@ mod tests {
                 "3 + 4 * 5 == 3 * 1 + 4 * 5",
                 "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
             ),
-            ("3 > 5 == false","((3 > 5) == false)"),
-            ("3 < 5 == true","((3 < 5) == true)"),
+            ("3 > 5 == false", "((3 > 5) == false)"),
+            ("3 < 5 == true", "((3 < 5) == true)"),
             ("1 + (2 + 3) +4", "((1 + (2 + 3)) + 4)"),
             ("(5 + 5) * 2", "((5 + 5) * 2)"),
             ("2 / (5 + 5)", "(2 / (5 + 5))"),
             ("-(5 + 5)", "(-(5 + 5))"),
-            ("!(true == true)", "(!(true == true))" )
+            ("!(true == true)", "(!(true == true))"),
         ];
 
         for (input, result) in pair {
@@ -418,6 +452,45 @@ mod tests {
             Statement::Expression(Expression::Bool(true)),
             Statement::Expression(Expression::Bool(false)),
         ];
+
+        validate_and_parse_program(input, expected_statements);
+    }
+
+    #[test]
+    fn test_if_expression() {
+        let input = r#"
+            if (x < y) { x }
+        "#;
+
+        let expected_statements = vec![Statement::Expression(Expression::If(
+            Box::new(Expression::Infix(
+                Box::new(Expression::Identifier("x".to_string())),
+                InfixOperator::LT,
+                Box::new(Expression::Identifier("y".to_string())),
+            )),
+            vec![Statement::Expression(Expression::Identifier("x".to_string()))],
+            Vec::new(),
+        ))];
+
+        validate_and_parse_program(input, expected_statements);
+    }
+
+    #[test]
+    #[ignore = "not ready yet"]
+    fn test_if_else_expression() {
+        let input = r#"
+            if (x < y) { x } else { y }
+        "#;
+
+        let expected_statements = vec![Statement::Expression(Expression::If(
+            Box::new(Expression::Infix(
+                Box::new(Expression::Identifier("x".to_string())),
+                InfixOperator::LT,
+                Box::new(Expression::Identifier("y".to_string())),
+            )),
+            Vec::new(),
+            Vec::new(),
+        ))];
 
         validate_and_parse_program(input, expected_statements);
     }

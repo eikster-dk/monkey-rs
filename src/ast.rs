@@ -26,6 +26,7 @@ pub enum Expression {
     Bool(bool),
     Prefix(PrefixOperator, Box<Expression>),
     Infix(Box<Expression>, InfixOperator, Box<Expression>),
+    If(Box<Expression>, BlockStatement, BlockStatement),
 }
 
 impl fmt::Display for Expression {
@@ -36,23 +37,26 @@ impl fmt::Display for Expression {
             Expression::Bool(b) => format!("{}", b),
             Expression::Prefix(op, exp) => format!("({}{})", op, exp),
             Expression::Infix(left, op, right) => format!("({} {} {})", left, op, right),
+            Expression::If(condition, consequnce, alternative) => format!("if {}", condition),
         };
 
         write!(f, "{}", s)
     }
 }
 
+pub type BlockStatement = Vec<Statement>;
+
 #[derive(Debug, PartialEq)]
 pub enum PrefixOperator {
     Minus,
-    Bang
+    Bang,
 }
 
 impl fmt::Display for PrefixOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             PrefixOperator::Minus => format!("-"),
-            PrefixOperator::Bang => format!{"!"},
+            PrefixOperator::Bang => format! {"!"},
         };
 
         write!(f, "{}", s)
@@ -94,13 +98,17 @@ pub struct Program {
 
 impl Program {
     pub fn new(statements: Vec<Statement>) -> Program {
-        Program { statements}
+        Program { statements }
     }
 }
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s: Vec<String> = self.statements.iter().map(|stmt| stmt.to_string()).collect();
+        let s: Vec<String> = self
+            .statements
+            .iter()
+            .map(|stmt| stmt.to_string())
+            .collect();
 
         write!(f, "{}", s.join("\n"))
     }

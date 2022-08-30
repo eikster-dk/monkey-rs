@@ -49,10 +49,6 @@ impl<'a> Parser<'a> {
             let t = self.lexer.next().unwrap();
             let expression = self.parse_expression(Precedence::Lowest, t);
 
-            // improve this:
-            while Some(&Token::Semicolon) != self.lexer.peek() {
-                self.lexer.next();
-            }
             self.lexer.next();
 
             Ok(Statement::Let(name, expression))
@@ -182,7 +178,18 @@ impl<'a> Parser<'a> {
 
         let consequence = self.parse_block_statement();
 
-        Expression::If(Box::new(condition), consequence, vec![])
+        let mut alternative = vec![];
+        if Some(&Token::Else) == self.lexer.peek() {
+            self.lexer.next();
+
+            if !self.expect_token(Token::LBrace) {
+                panic!("TODO: fix error handling")
+            }
+
+            alternative = self.parse_block_statement()
+        }
+
+        Expression::If(Box::new(condition), consequence, alternative)
     }
 
     fn parse_block_statement(&mut self) -> BlockStatement {
@@ -195,8 +202,6 @@ impl<'a> Parser<'a> {
                 Err(e) => self.errors.push(e),
             }
         }
-
-        println!("what is stmts: {:?}", stmts);
 
         self.lexer.next();
         stmts
@@ -245,11 +250,31 @@ mod tests {
         let x = 5;
         let y = 10;
         let foo = 838383;
+        let x = 1 * 2 * 3 * 4 * 5;
 "#;
         let expected_statements = vec![
             Statement::Let("x".to_string(), Expression::Integer(5)),
             Statement::Let("y".to_string(), Expression::Integer(10)),
             Statement::Let("foo".to_string(), Expression::Integer(838383)),
+            Statement::Let("x".to_string(),
+                Expression::Infix(
+                    Box::new(Expression::Infix(
+                        Box::new(Expression::Infix(
+                            Box::new(Expression::Infix(
+                                Box::new(Expression::Integer(1)),
+                                InfixOperator::Multiply,
+                                Box::new(Expression::Integer(2)),
+                            )),
+                            InfixOperator::Multiply,
+                            Box::new(Expression::Integer(3)),
+                        )),
+                        InfixOperator::Multiply,
+                        Box::new(Expression::Integer(4)),
+                    )),
+                    InfixOperator::Multiply,
+                    Box::new(Expression::Integer(5)),
+                ),
+            ),
         ];
 
         validate_and_parse_program(input, expected_statements);
@@ -429,6 +454,7 @@ mod tests {
             ("2 / (5 + 5)", "(2 / (5 + 5))"),
             ("-(5 + 5)", "(-(5 + 5))"),
             ("!(true == true)", "(!(true == true))"),
+            ("1 * 2 * 3 * 4 * 5", "((((1 * 2) * 3) * 4) * 5)"),
         ];
 
         for (input, result) in pair {
@@ -468,7 +494,9 @@ mod tests {
                 InfixOperator::LT,
                 Box::new(Expression::Identifier("y".to_string())),
             )),
-            vec![Statement::Expression(Expression::Identifier("x".to_string()))],
+            vec![Statement::Expression(Expression::Identifier(
+                "x".to_string(),
+            ))],
             Vec::new(),
         ))];
 
@@ -476,7 +504,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "not ready yet"]
     fn test_if_else_expression() {
         let input = r#"
             if (x < y) { x } else { y }
@@ -488,8 +515,12 @@ mod tests {
                 InfixOperator::LT,
                 Box::new(Expression::Identifier("y".to_string())),
             )),
-            Vec::new(),
-            Vec::new(),
+            vec![Statement::Expression(Expression::Identifier(
+                "x".to_string(),
+            ))],
+            vec![Statement::Expression(Expression::Identifier(
+                "y".to_string(),
+            ))],
         ))];
 
         validate_and_parse_program(input, expected_statements);
@@ -509,11 +540,11 @@ mod tests {
 
         let program = parser.parse_program();
         if parser.errors.len() > 0 {
-            panic!("error occured in parser: {:?}", parser.errors);
+            panic!("error occured in parser: {:#?}", parser.errors);
         }
 
         if expected_statements.len() != program.statements.len() {
-            panic!("the program statements and expected statements are not the same. expected: {}, got: {}\n\n {:?}",
+            panic!("the program statements and expected statements are not the same. expected: {}, got: {}\n\n {:#?}",
                 expected_statements.len(),
                 program.statements.len(),
                 program.statements);

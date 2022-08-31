@@ -27,6 +27,7 @@ pub enum Expression {
     Prefix(PrefixOperator, Box<Expression>),
     Infix(Box<Expression>, InfixOperator, Box<Expression>),
     If(Box<Expression>, BlockStatement, BlockStatement),
+    Function(Vec<String>, BlockStatement),
 }
 
 impl fmt::Display for Expression {
@@ -37,7 +38,28 @@ impl fmt::Display for Expression {
             Expression::Bool(b) => format!("{}", b),
             Expression::Prefix(op, exp) => format!("({}{})", op, exp),
             Expression::Infix(left, op, right) => format!("({} {} {})", left, op, right),
-            Expression::If(condition, consequnce, alternative) => format!("if {}", condition),
+            Expression::If(condition, consequnce, alternative) => {
+                let consequnce_str: Vec<String> =
+                    consequnce.iter().map(|x| x.to_string()).collect();
+                let mut s = format!("if {} then {}", condition, consequnce_str.join(""));
+                if alternative.len() > 0 {
+                    let alternative_str: Vec<String> =
+                        alternative.iter().map(|x| x.to_string()).collect();
+                    s = format!("{} else {}", s, alternative_str.join(""));
+                }
+
+                s
+            }
+            Expression::Function(parameters, block) => {
+                let parameters = parameters.join(" ");
+                
+                let block_stmt: Vec<String> =
+                    block.iter().map(|x| x.to_string()).collect();
+
+                let s = format!("fn ({}) {{ {} }}", parameters, block_stmt.join(""));
+
+                s
+            },
         };
 
         write!(f, "{}", s)

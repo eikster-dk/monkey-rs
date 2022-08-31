@@ -87,6 +87,7 @@ impl<'a> Parser<'a> {
             Token::Boolean(b) => Expression::Bool(b),
             Token::LParenthesis => self.parse_group_expression(),
             Token::If => self.parse_if_expression(),
+            Token::Function => self.parse_function().unwrap(), // todo: fix unwrap,
             _ => panic!("TODO: Implement more operators??: {:?}", token),
         };
 
@@ -207,6 +208,58 @@ impl<'a> Parser<'a> {
         stmts
     }
 
+    fn parse_function(&mut self) -> Option<Expression> {
+        if !self.expect_token(Token::LParenthesis) {
+            self.errors.push("expected left parenthesis".to_string());
+            return None;
+        }
+
+        let params = self.parse_function_parameters();
+        if let Some(params) = params {
+            if !self.expect_token(Token::LBrace) {
+                self.errors.push("expected left parenthesis".to_string());
+                return None;
+            }
+
+            let block = self.parse_block_statement();
+
+            return Some(Expression::Function(params, block));
+        }
+
+        None
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<String>> {
+        let mut parameters = vec![];
+
+        if self.expect_token(Token::RParenthesis) {
+            return Some(parameters);
+        }
+
+        let t = self.lexer.next();
+        match t {
+            Some(Token::Identifier(x)) => parameters.push(x),
+            _ => (),
+        }
+
+        while Some(&Token::Comma) == self.lexer.peek() {
+            self.lexer.next();
+            let t = self.lexer.next();
+            match t {
+                Some(Token::Identifier(x)) => parameters.push(x),
+                _ => (),
+            }
+        }
+
+        if !self.expect_token(Token::RParenthesis) {
+            self.errors
+                .push("expected to find right parenthesis".to_string());
+            return None;
+        }
+
+        Some(parameters)
+    }
+
     fn expect_token(&mut self, t: Token) -> bool {
         if Some(&t) == self.lexer.peek() {
             self.lexer.next();
@@ -256,7 +309,8 @@ mod tests {
             Statement::Let("x".to_string(), Expression::Integer(5)),
             Statement::Let("y".to_string(), Expression::Integer(10)),
             Statement::Let("foo".to_string(), Expression::Integer(838383)),
-            Statement::Let("x".to_string(),
+            Statement::Let(
+                "x".to_string(),
                 Expression::Infix(
                     Box::new(Expression::Infix(
                         Box::new(Expression::Infix(
@@ -532,6 +586,49 @@ mod tests {
         right: Expression,
     ) -> Statement {
         Statement::Expression(Expression::Infix(Box::new(left), operator, Box::new(right)))
+    }
+
+    #[test]
+    fn test_function_parsing() {
+        let input = r#"
+            let add = fn(x,y) {
+              x + y
+            }
+        "#;
+
+        let expected_statements = vec![Statement::Let(
+            "add".to_string(),
+            Expression::Function(
+                vec!["x".to_string(), "y".to_string()],
+                vec![Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Identifier("x".to_string())),
+                    InfixOperator::Plus,
+                    Box::new(Expression::Identifier("y".to_string())),
+                ))],
+            ),
+        )];
+
+        validate_and_parse_program(input, expected_statements);
+    }
+
+    #[test]
+    fn test_function_paramenter_parsing() {
+        let input = r#"
+            fn() {};
+            fn(x) {};
+            fn(x, y, z) {};
+        "#;
+
+        let expected_statements = vec![
+            Statement::Expression(Expression::Function(vec![], vec![])),
+            Statement::Expression(Expression::Function(vec!["x".to_string()], vec![])),
+            Statement::Expression(Expression::Function(
+                vec!["x".to_string(), "y".to_string(), "z".to_string()],
+                vec![],
+            )),
+        ];
+
+        validate_and_parse_program(input, expected_statements);
     }
 
     fn validate_and_parse_program(input: &str, expected_statements: Vec<Statement>) {

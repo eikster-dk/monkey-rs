@@ -8,7 +8,7 @@ use crate::{
 
 pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a>>,
-    errors: Vec<String>,
+    pub errors: Vec<String>,
 }
 
 impl<'a> Parser<'a> {

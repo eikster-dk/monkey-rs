@@ -58,16 +58,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_return_statement(&mut self) -> Result<Statement, String> {
-        //TODO: fix expression part
-        //TODO: go to next token until we reach semicolon
+        let t = self.lexer.next().unwrap();
+        let expression = self.parse_expression(Precedence::Lowest, t);
 
-        // improve this:
-        while Some(&Token::Semicolon) != self.lexer.peek() {
-            self.lexer.next();
-        }
         self.lexer.next();
 
-        Ok(Statement::Return(Expression::Identifier("".to_string())))
+        Ok(Statement::Return(expression))
     }
 
     fn parse_expression_statement(&mut self, token: Token) -> Result<Statement, String> {
@@ -104,7 +100,7 @@ impl<'a> Parser<'a> {
                     | Token::LT
                     | Token::Equal
                     | Token::NotEqual => left = self.parse_infix_expression(t, left),
-                    | Token::LParenthesis => left = self.parse_call_expression(t, left),
+                    Token::LParenthesis => left = self.parse_call_expression(t, left),
                     _ => (),
                 }
             } else {
@@ -282,7 +278,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_call_expression(&mut self, t: Token, left: Expression) -> Expression {
-        let mut args :Vec<Expression> = vec![];
+        let mut args: Vec<Expression> = vec![];
         if self.expect_token(Token::RParenthesis) {
             self.lexer.next();
             return Expression::Call(Box::new(left), args);
@@ -293,7 +289,7 @@ impl<'a> Parser<'a> {
 
             let t = self.lexer.next().unwrap();
 
-            let arg = self.parse_expression(Precedence::Lowest, t); 
+            let arg = self.parse_expression(Precedence::Lowest, t);
             args.push(arg);
         }
 
@@ -364,9 +360,12 @@ mod tests {
         "#;
 
         let expected_statements = vec![
-            Statement::Return(Expression::Identifier("".to_string())),
-            Statement::Return(Expression::Identifier("".to_string())),
-            Statement::Return(Expression::Identifier("".to_string())),
+            Statement::Return(Expression::Integer(5)),
+            Statement::Return(Expression::Integer(10)),
+            Statement::Return(Expression::Call(
+                Box::new(Expression::Identifier("add".to_string())),
+                vec![Expression::Integer(15)],
+            )),
         ];
 
         validate_and_parse_program(input, expected_statements);
@@ -658,26 +657,28 @@ mod tests {
             add(1, 2 * 3, 4 + 5);
         "#;
 
-        let expected_statements = vec![
-            Statement::Expression(
-                Expression::Call(
-                    Box::new(Expression::Identifier("add".to_string())),
-                    vec![
-                        Expression::Integer(1),
-                        Expression::Infix(Box::new(Expression::Integer(2)), InfixOperator::Multiply, Box::new(Expression::Integer(3))),
-                        Expression::Infix(Box::new(Expression::Integer(4)), InfixOperator::Plus, Box::new(Expression::Integer(5))),
-                    ]
-                )
-            )
-        ];
+        let expected_statements = vec![Statement::Expression(Expression::Call(
+            Box::new(Expression::Identifier("add".to_string())),
+            vec![
+                Expression::Integer(1),
+                Expression::Infix(
+                    Box::new(Expression::Integer(2)),
+                    InfixOperator::Multiply,
+                    Box::new(Expression::Integer(3)),
+                ),
+                Expression::Infix(
+                    Box::new(Expression::Integer(4)),
+                    InfixOperator::Plus,
+                    Box::new(Expression::Integer(5)),
+                ),
+            ],
+        ))];
 
         validate_and_parse_program(input, expected_statements);
     }
 
     #[test]
-    fn test_call_parameter_parsing() {
-
-    }
+    fn test_call_parameter_parsing() {}
 
     fn validate_and_parse_program(input: &str, expected_statements: Vec<Statement>) {
         let lexer = Lexer::new(input);

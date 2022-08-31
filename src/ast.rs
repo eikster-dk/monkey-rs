@@ -28,6 +28,7 @@ pub enum Expression {
     Infix(Box<Expression>, InfixOperator, Box<Expression>),
     If(Box<Expression>, BlockStatement, BlockStatement),
     Function(Vec<String>, BlockStatement),
+    Call(Box<Expression>, Vec<Expression>),
 }
 
 impl fmt::Display for Expression {
@@ -52,14 +53,18 @@ impl fmt::Display for Expression {
             }
             Expression::Function(parameters, block) => {
                 let parameters = parameters.join(" ");
-                
-                let block_stmt: Vec<String> =
-                    block.iter().map(|x| x.to_string()).collect();
+
+                let block_stmt: Vec<String> = block.iter().map(|x| x.to_string()).collect();
 
                 let s = format!("fn ({}) {{ {} }}", parameters, block_stmt.join(""));
 
                 s
-            },
+            }
+            Expression::Call(identifier, arguments) => {
+                let args: Vec<String> = arguments.iter().map(|x| x.to_string()).collect();
+
+                format!("{}({})", identifier.to_string(), args.join(", "))
+            }
         };
 
         write!(f, "{}", s)

@@ -104,6 +104,7 @@ impl<'a> Parser<'a> {
                     | Token::LT
                     | Token::Equal
                     | Token::NotEqual => left = self.parse_infix_expression(t, left),
+                    | Token::LParenthesis => left = self.parse_call_expression(t, left),
                     _ => (),
                 }
             } else {
@@ -275,8 +276,28 @@ impl<'a> Parser<'a> {
             Token::LT | Token::GT => Precedence::LessGreater,
             Token::Slash | Token::Asterisk => Precedence::Product,
             Token::Equal | Token::NotEqual => Precedence::Equals,
+            Token::LParenthesis => Precedence::Call,
             _ => Precedence::Lowest,
         }
+    }
+
+    fn parse_call_expression(&mut self, t: Token, left: Expression) -> Expression {
+        let mut args :Vec<Expression> = vec![];
+        if self.expect_token(Token::RParenthesis) {
+            self.lexer.next();
+            return Expression::Call(Box::new(left), args);
+        }
+
+        while !self.expect_token(Token::RParenthesis) {
+            self.expect_token(Token::Comma);
+
+            let t = self.lexer.next().unwrap();
+
+            let arg = self.parse_expression(Precedence::Lowest, t); 
+            args.push(arg);
+        }
+
+        Expression::Call(Box::new(left), args)
     }
 }
 
@@ -629,6 +650,33 @@ mod tests {
         ];
 
         validate_and_parse_program(input, expected_statements);
+    }
+
+    #[test]
+    fn test_call_expressions() {
+        let input = r#"
+            add(1, 2 * 3, 4 + 5);
+        "#;
+
+        let expected_statements = vec![
+            Statement::Expression(
+                Expression::Call(
+                    Box::new(Expression::Identifier("add".to_string())),
+                    vec![
+                        Expression::Integer(1),
+                        Expression::Infix(Box::new(Expression::Integer(2)), InfixOperator::Multiply, Box::new(Expression::Integer(3))),
+                        Expression::Infix(Box::new(Expression::Integer(4)), InfixOperator::Plus, Box::new(Expression::Integer(5))),
+                    ]
+                )
+            )
+        ];
+
+        validate_and_parse_program(input, expected_statements);
+    }
+
+    #[test]
+    fn test_call_parameter_parsing() {
+
     }
 
     fn validate_and_parse_program(input: &str, expected_statements: Vec<Statement>) {

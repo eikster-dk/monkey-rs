@@ -22,16 +22,14 @@ impl<'a> Parser<'a> {
     pub fn parse_program(&mut self) -> Program {
         let mut stmts = vec![];
         while let Some(token) = self.lexer.next() {
-            let result = self.parse_statement(token);
-            match result {
-                Ok(s) => stmts.push(s),
-                Err(e) => self.errors.push(e),
+            if let Some(result) = self.parse_statement(token) {
+                stmts.push(result)
             }
         }
         Program::new(stmts)
     }
 
-    fn parse_statement(&mut self, token: Token) -> Result<Statement, String> {
+    fn parse_statement(&mut self, token: Token) -> Option<Statement> {
         match token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
@@ -39,40 +37,46 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Result<Statement, String> {
+    fn parse_let_statement(&mut self) -> Option<Statement> {
         let name = match self.lexer.next() {
             Some(Token::Identifier(name)) => name.to_string(),
-            _ => return Err("Expected to find an identifier token".to_string()),
+            _ => {
+                self.errors
+                    .push("Expected to find an identifier token".to_string());
+                return None;
+            }
         };
 
         if let Some(Token::Assign) = self.lexer.next() {
-            let t = self.lexer.next().unwrap();
-            let expression = self.parse_expression(Precedence::Lowest, t).unwrap(); // todo: fix
+            let t = self.lexer.next()?;
+            let expression = self.parse_expression(Precedence::Lowest, t)?;
 
             self.lexer.next();
 
-            Ok(Statement::Let(name, expression))
+            Some(Statement::Let(name, expression))
         } else {
-            return Err("Expected to find an assign token".to_string());
+            self.errors
+                .push("Expected to find an assign token".to_string());
+            return None;
         }
     }
 
-    fn parse_return_statement(&mut self) -> Result<Statement, String> {
-        let t = self.lexer.next().unwrap();
-        let expression = self.parse_expression(Precedence::Lowest, t).unwrap(); // todo: fix
+    fn parse_return_statement(&mut self) -> Option<Statement> {
+        let t = self.lexer.next()?;
+        let expression = self.parse_expression(Precedence::Lowest, t)?;
 
         self.lexer.next();
 
-        Ok(Statement::Return(expression))
+        Some(Statement::Return(expression))
     }
 
-    fn parse_expression_statement(&mut self, token: Token) -> Result<Statement, String> {
-        let expression = self.parse_expression(Precedence::Lowest, token).unwrap(); // todo: fix
+    fn parse_expression_statement(&mut self, token: Token) -> Option<Statement> {
+        let expression = self.parse_expression(Precedence::Lowest, token)?;
         if let Some(&Token::Semicolon) = self.lexer.peek() {
             self.lexer.next();
         }
 
-        Ok(Statement::Expression(expression))
+        Some(Statement::Expression(expression))
     }
 
     fn parse_expression(&mut self, precedence: Precedence, token: Token) -> Option<Expression> {
@@ -85,9 +89,10 @@ impl<'a> Parser<'a> {
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function(),
             _ => {
-                self.errors.push(format!("No prefix parser for {:?} found", token));
+                self.errors
+                    .push(format!("No prefix parser for {:?} found", token));
                 None
-            },
+            }
         };
 
         if let Some(mut left) = opt_left {
@@ -123,7 +128,10 @@ impl<'a> Parser<'a> {
         let prefix = match token {
             Token::Bang => PrefixOperator::Bang,
             Token::Minus => PrefixOperator::Minus,
-            _ => panic!("TODO: This should really return an option type"),
+            _ => {
+                self.errors.push("unexpected prefix".to_string());
+                return None
+            }
         };
 
         if let Some(tt) = self.lexer.next() {
@@ -160,7 +168,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_group_expression(&mut self) -> Option<Expression> {
-        let t = self.lexer.next()?; 
+        let t = self.lexer.next()?;
         let exp = self.parse_expression(Precedence::Lowest, t);
 
         if let Some(Token::RParenthesis) = self.lexer.peek() {
@@ -189,7 +197,7 @@ impl<'a> Parser<'a> {
             return None;
         };
 
-        let consequence = self.parse_block_statement();
+        let consequence = self.parse_block_statement()?;
 
         let mut alternative = vec![];
         if Some(&Token::Else) == self.lexer.peek() {
@@ -200,26 +208,28 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            alternative = self.parse_block_statement();
+            alternative = self.parse_block_statement()?;
         }
 
-        Some(Expression::If(Box::new(condition), consequence, alternative))
+        Some(Expression::If(
+            Box::new(condition),
+            consequence,
+            alternative,
+        ))
     }
 
-    fn parse_block_statement(&mut self) -> BlockStatement {
+    fn parse_block_statement(&mut self) -> Option<BlockStatement> {
         let mut stmts: Vec<Statement> = vec![];
 
         while Some(&Token::RBrace) != self.lexer.peek() {
-            let token = self.lexer.next().unwrap(); // todo: remove unwrap
-            let stmt = self.parse_statement(token);
-            match stmt {
-                Ok(s) => stmts.push(s),
-                Err(e) => self.errors.push(e),
+            let token = self.lexer.next()?;
+            if let Some(stmt) = self.parse_statement(token) {
+                stmts.push(stmt)
             }
         }
 
         self.lexer.next();
-        stmts
+        Some(stmts)
     }
 
     fn parse_function(&mut self) -> Option<Expression> {
@@ -235,7 +245,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            let block = self.parse_block_statement();
+            let block = self.parse_block_statement()?;
 
             return Some(Expression::Function(params, block));
         }

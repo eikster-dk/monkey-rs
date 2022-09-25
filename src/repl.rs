@@ -17,16 +17,19 @@ pub fn start<R: io::BufRead, W: io::Write>(mut read: R, mut writer: W) -> io::Re
 
         let lexer = Lexer::new(s.as_str());
         let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
+        let result = parser.parse_program();
 
-        if parser.errors.len() > 0 {
-            for e in parser.errors {
-                writer.write(format!("{:?}\n", e).as_bytes())?;
+        match result {
+            Ok(program) => {
+                writer.write(format!("{:?}\n", program.to_string()).as_bytes())?;
                 writer.flush()?;
             }
-        } else {
-            writer.write(format!("{:?}\n", program.to_string()).as_bytes())?;
-            writer.flush()?;
+            Err(errs) => {
+                for e in errs {
+                    writer.write(format!("{:?}\n", e).as_bytes())?;
+                    writer.flush()?;
+                }
+            }
         }
     }
 }

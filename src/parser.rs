@@ -8,7 +8,7 @@ use crate::{
 
 pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a>>,
-    pub errors: Vec<String>,
+    errors: Vec<String>,
 }
 
 impl<'a> Parser<'a> {
@@ -19,14 +19,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_program(&mut self) -> Program {
+    pub fn parse_program(&mut self) -> Result<Program, Vec<String>> {
         let mut stmts = vec![];
         while let Some(token) = self.lexer.next() {
             if let Some(result) = self.parse_statement(token) {
                 stmts.push(result)
             }
         }
-        Program::new(stmts)
+        if self.errors.len() > 0 {
+            Err(self.errors.clone())
+        } else {
+            Ok(Program::new(stmts))
+        }
     }
 
     fn parse_statement(&mut self, token: Token) -> Option<Statement> {
@@ -130,7 +134,7 @@ impl<'a> Parser<'a> {
             Token::Minus => PrefixOperator::Minus,
             _ => {
                 self.errors.push("unexpected prefix".to_string());
-                return None
+                return None;
             }
         };
 
@@ -346,10 +350,7 @@ mod tests {
                 let lexer = Lexer::new($input);
                 let mut parser = Parser::new(lexer);
 
-                let program = parser.parse_program();
-                if parser.errors.len() > 0 {
-                    panic!("error occured in parser: {:#?}", parser.errors);
-                }
+                let program = parser.parse_program().unwrap();
 
                 insta::assert_debug_snapshot!(&program);
             }
@@ -498,7 +499,7 @@ mod tests {
         for (input, result) in pair {
             let lexer = Lexer::new(input);
             let mut parser = Parser::new(lexer);
-            let program = parser.parse_program();
+            let program = parser.parse_program().unwrap();
 
             println!("{:?}", program.statements);
             assert_eq!(program.to_string(), result.to_string());

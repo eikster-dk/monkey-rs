@@ -1,0 +1,13 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Expression(
+            Integer(
+                5,
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,32 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Expression(
+            Function(
+                [],
+                [],
+            ),
+        ),
+        Expression(
+            Function(
+                [
+                    "x",
+                ],
+                [],
+            ),
+        ),
+        Expression(
+            Function(
+                [
+                    "x",
+                    "y",
+                    "z",
+                ],
+                [],
+            ),
+        ),
+    ],
+}

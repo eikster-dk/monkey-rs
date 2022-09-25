@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Expression(
+            If(
+                Infix(
+                    Identifier(
+                        "x",
+                    ),
+                    LT,
+                    Identifier(
+                        "y",
+                    ),
+                ),
+                [
+                    Expression(
+                        Identifier(
+                            "x",
+                        ),
+                    ),
+                ],
+                [],
+            ),
+        ),
+    ],
+}

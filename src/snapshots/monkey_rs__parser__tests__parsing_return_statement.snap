@@ -1,0 +1,30 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Return(
+            Integer(
+                5,
+            ),
+        ),
+        Return(
+            Integer(
+                10,
+            ),
+        ),
+        Return(
+            Call(
+                Identifier(
+                    "add",
+                ),
+                [
+                    Integer(
+                        15,
+                    ),
+                ],
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,40 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Expression(
+            Prefix(
+                Bang,
+                Integer(
+                    5,
+                ),
+            ),
+        ),
+        Expression(
+            Prefix(
+                Minus,
+                Integer(
+                    15,
+                ),
+            ),
+        ),
+        Expression(
+            Prefix(
+                Bang,
+                Bool(
+                    true,
+                ),
+            ),
+        ),
+        Expression(
+            Prefix(
+                Bang,
+                Bool(
+                    false,
+                ),
+            ),
+        ),
+    ],
+}

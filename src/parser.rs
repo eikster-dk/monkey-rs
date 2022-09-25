@@ -398,8 +398,6 @@ mod tests {
         add(1, 2 * 3, 4 + 5);
     "#);
 
-    snapshot!(test_call_parameter_parsing, r#""#);
-
     #[test]
     fn test_operator_precedence_parsing() {
         let pair = vec![

@@ -1,0 +1,56 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Let(
+            "x",
+            Integer(
+                5,
+            ),
+        ),
+        Let(
+            "y",
+            Integer(
+                10,
+            ),
+        ),
+        Let(
+            "foo",
+            Integer(
+                838383,
+            ),
+        ),
+        Let(
+            "x",
+            Infix(
+                Infix(
+                    Infix(
+                        Infix(
+                            Integer(
+                                1,
+                            ),
+                            Multiply,
+                            Integer(
+                                2,
+                            ),
+                        ),
+                        Multiply,
+                        Integer(
+                            3,
+                        ),
+                    ),
+                    Multiply,
+                    Integer(
+                        4,
+                    ),
+                ),
+                Multiply,
+                Integer(
+                    5,
+                ),
+            ),
+        ),
+    ],
+}

@@ -1,0 +1,38 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Expression(
+            Call(
+                Identifier(
+                    "add",
+                ),
+                [
+                    Integer(
+                        1,
+                    ),
+                    Infix(
+                        Integer(
+                            2,
+                        ),
+                        Multiply,
+                        Integer(
+                            3,
+                        ),
+                    ),
+                    Infix(
+                        Integer(
+                            4,
+                        ),
+                        Plus,
+                        Integer(
+                            5,
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    ],
+}

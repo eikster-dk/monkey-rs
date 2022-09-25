@@ -1,0 +1,30 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Let(
+            "add",
+            Function(
+                [
+                    "x",
+                    "y",
+                ],
+                [
+                    Expression(
+                        Infix(
+                            Identifier(
+                                "x",
+                            ),
+                            Plus,
+                            Identifier(
+                                "y",
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    ],
+}

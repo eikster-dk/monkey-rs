@@ -1,6 +1,7 @@
 use core::fmt;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Statement {
     Let(String, Expression),
     Return(Expression),
@@ -19,7 +20,7 @@ impl fmt::Display for Statement {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Expression {
     Identifier(String),
     Integer(isize),
@@ -73,7 +74,7 @@ impl fmt::Display for Expression {
 
 pub type BlockStatement = Vec<Statement>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum PrefixOperator {
     Minus,
     Bang,
@@ -90,7 +91,7 @@ impl fmt::Display for PrefixOperator {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum InfixOperator {
     Plus,
     Minus,
@@ -119,6 +120,8 @@ impl fmt::Display for InfixOperator {
     }
 }
 
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Program {
     pub statements: Vec<Statement>,
 }

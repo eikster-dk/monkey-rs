@@ -1,0 +1,18 @@
+---
+source: src/parser.rs
+expression: "&program"
+---
+Program {
+    statements: [
+        Expression(
+            Bool(
+                true,
+            ),
+        ),
+        Expression(
+            Bool(
+                false,
+            ),
+        ),
+    ],
+}

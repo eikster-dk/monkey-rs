@@ -1,0 +1,23 @@
+---
+source: src/eval.rs
+expression: "&result"
+---
+[
+    Integer(
+        10,
+    ),
+    Null,
+    Integer(
+        10,
+    ),
+    Integer(
+        10,
+    ),
+    Null,
+    Integer(
+        20,
+    ),
+    Integer(
+        10,
+    ),
+]

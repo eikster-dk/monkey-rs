@@ -1,6 +1,6 @@
 use std::{fmt, vec};
 
-use crate::ast::{Expression, InfixOperator, PrefixOperator, Program, Statement};
+use crate::ast::{Expression, InfixOperator, PrefixOperator, Program, Statement, BlockStatement};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Object {
@@ -21,13 +21,13 @@ impl fmt::Display for Object {
 }
 
 pub fn evaluate_program(program: Program) -> Vec<Object> {
-    program
-        .statements
-        .iter()
-        .map(|stmt| evaluate_statement(stmt))
-        .collect()
+    evaluate_statements(&program.statements)
 }
 
+fn evaluate_statements(statements: &Vec<Statement>) -> Vec<Object> {
+    statements.iter().map(|stmt| evaluate_statement(stmt)).collect()
+}
+ 
 fn evaluate_statement(stmt: &Statement) -> Object {
     match stmt {
         Statement::Let(_, _) => Object::Null,
@@ -49,7 +49,7 @@ fn evaluate_expression(expr: &Expression) -> Object {
             operator,
             evaluate_expression(right),
         ),
-        Expression::If(_, _, _) => Object::Null,
+        Expression::If(condition, consequence, alternative) => evaluate_conditionals(evaluate_expression(condition), consequence, alternative),
         Expression::Function(_, _) => Object::Null,
         Expression::Call(_, _) => Object::Null,
     }
@@ -92,6 +92,29 @@ fn evaluate_infix_operator(left: Object, operator: &InfixOperator, right: Object
     }
 }
 
+fn evaluate_conditionals(condition: Object, consequence: &BlockStatement, alternative: &BlockStatement) -> Object {
+    // todo: this conditional evaluator is not complete and still requires work
+    // but this is the initial implementation
+    if isTruthy(condition) {
+        return evaluate_statements(consequence).last().unwrap().clone();
+    }
+
+    if !alternative.is_empty() {
+        return evaluate_statements(alternative).last().unwrap().clone();
+    }
+
+    Object::Null
+}
+
+#[inline]
+fn isTruthy(obj:Object) -> bool {
+    match obj {
+        Object::Bool(b) => b,
+        Object::Null => false,
+        _ => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{lexer::Lexer, parser::Parser};
@@ -129,5 +152,9 @@ mod tests {
     snapshot!(
         evaluting_bang_operators,
         "./testdata/eval-bang-operators.monkey"
+    );
+    snapshot!(
+        evaluting_conditionals,
+        "./testdata/eval-conditionals.monkey"
     );
 }

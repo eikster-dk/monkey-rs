@@ -1,11 +1,12 @@
-use std::{fmt, vec};
+use std::fmt;
 
-use crate::ast::{Expression, InfixOperator, PrefixOperator, Program, Statement, BlockStatement};
+use crate::ast::{BlockStatement, Expression, InfixOperator, PrefixOperator, Program, Statement};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Object {
     Integer(isize),
     Bool(bool),
+    Return(Box<Object>),
     Null,
 }
 
@@ -14,24 +15,36 @@ impl fmt::Display for Object {
         let str = match self {
             Object::Integer(i) => i.to_string(),
             Object::Bool(b) => b.to_string(),
+            Object::Return(value) => value.to_string(),
             Object::Null => "null".to_string(),
         };
         write!(f, "{}", str)
     }
 }
 
-pub fn evaluate_program(program: Program) -> Vec<Object> {
+pub fn evaluate_program(program: Program) -> Object {
     evaluate_statements(&program.statements)
 }
 
-fn evaluate_statements(statements: &Vec<Statement>) -> Vec<Object> {
-    statements.iter().map(|stmt| evaluate_statement(stmt)).collect()
+fn evaluate_statements(statements: &Vec<Statement>) -> Object {
+    println!("{:?}", statements);
+    let mut result = Object::Null;
+    for stmt in statements {
+        result = evaluate_statement(stmt);
+
+        match result {
+            Object::Return(result) => return *result,
+            _ => (),
+        }
+    }
+
+    result
 }
- 
+
 fn evaluate_statement(stmt: &Statement) -> Object {
     match stmt {
         Statement::Let(_, _) => Object::Null,
-        Statement::Return(_) => Object::Null,
+        Statement::Return(expr) => Object::Return(Box::new(evaluate_expression(expr))),
         Statement::Expression(expr) => evaluate_expression(expr),
     }
 }
@@ -49,7 +62,9 @@ fn evaluate_expression(expr: &Expression) -> Object {
             operator,
             evaluate_expression(right),
         ),
-        Expression::If(condition, consequence, alternative) => evaluate_conditionals(evaluate_expression(condition), consequence, alternative),
+        Expression::If(condition, consequence, alternative) => {
+            evaluate_conditionals(evaluate_expression(condition), consequence, alternative)
+        }
         Expression::Function(_, _) => Object::Null,
         Expression::Call(_, _) => Object::Null,
     }
@@ -81,33 +96,34 @@ fn evaluate_infix_operator(left: Object, operator: &InfixOperator, right: Object
             InfixOperator::Equals => Object::Bool(left == right),
             InfixOperator::NotEquals => Object::Bool(left != right),
         },
-        (Object::Bool(left), Object::Bool(right)) => {
-            match operator {
-                InfixOperator::Equals => Object::Bool(left == right),
-                InfixOperator::NotEquals => Object::Bool(left != right),
-                _ => Object::Null,
-            }
-        }
+        (Object::Bool(left), Object::Bool(right)) => match operator {
+            InfixOperator::Equals => Object::Bool(left == right),
+            InfixOperator::NotEquals => Object::Bool(left != right),
+            _ => Object::Null,
+        },
         (_, _) => Object::Null,
     }
 }
 
-fn evaluate_conditionals(condition: Object, consequence: &BlockStatement, alternative: &BlockStatement) -> Object {
-    // todo: this conditional evaluator is not complete and still requires work
-    // but this is the initial implementation
-    if isTruthy(condition) {
-        return evaluate_statements(consequence).last().unwrap().clone();
+fn evaluate_conditionals(
+    condition: Object,
+    consequence: &BlockStatement,
+    alternative: &BlockStatement,
+) -> Object {
+    println!("hello");
+    if is_truthy(condition) {
+        return evaluate_statements(consequence);
     }
 
     if !alternative.is_empty() {
-        return evaluate_statements(alternative).last().unwrap().clone();
+        return evaluate_statements(alternative);
     }
 
     Object::Null
 }
 
 #[inline]
-fn isTruthy(obj:Object) -> bool {
+fn is_truthy(obj: Object) -> bool {
     match obj {
         Object::Bool(b) => b,
         Object::Null => false,
@@ -125,12 +141,18 @@ mod tests {
         ($name:tt, $input:tt) => {
             #[test]
             fn $name() {
-                let str = include_str!($input);
-                let lexer = Lexer::new(str);
-                let mut parser = Parser::new(lexer);
+                let result: Vec<Object> = include_str!($input)
+                    .split("\n")
+                    .into_iter()
+                    .filter(|stmt| stmt != &"")
+                    .map(|stmt| {
+                        let lexer = Lexer::new(stmt);
+                        let mut parser = Parser::new(lexer);
 
-                let program = parser.parse_program().unwrap();
-                let result = evaluate_program(program);
+                        let program = parser.parse_program().unwrap();
+                        evaluate_program(program)
+                    })
+                    .collect();
 
                 let mut settings = insta::Settings::clone_current();
                 settings.set_snapshot_path("./testdata/output/eval");
@@ -157,4 +179,5 @@ mod tests {
         evaluting_conditionals,
         "./testdata/eval-conditionals.monkey"
     );
+    snapshot!(evaluting_returns, "./testdata/eval-return.monkey");
 }

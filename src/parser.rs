@@ -69,7 +69,9 @@ impl<'a> Parser<'a> {
         let t = self.lexer.next()?;
         let expression = self.parse_expression(Precedence::Lowest, t)?;
 
-        self.lexer.next();
+        if let Some(Token::Semicolon) = self.lexer.peek() {
+            self.lexer.next();
+        }
 
         Some(Statement::Return(expression))
     }
@@ -227,12 +229,16 @@ impl<'a> Parser<'a> {
 
         while Some(&Token::RBrace) != self.lexer.peek() {
             let token = self.lexer.next()?;
+            println!("what is token: {:?}", token);
             if let Some(stmt) = self.parse_statement(token) {
+                println!("what is stmt: {:?}", stmt);
                 stmts.push(stmt)
             }
         }
 
-        self.lexer.next();
+        let y = self.lexer.next();
+        println!("what is 2nd token: {:?}", y);
+        println!("what is returned: {:?}", stmts);
         Some(stmts)
     }
 
@@ -435,6 +441,13 @@ mod tests {
     );
 
     snapshot!(
+        test_if_else_return_expression,
+        r#"
+        if (x < y) { return x }
+    "#
+    );
+
+    snapshot!(
         test_function_parsing,
         r#"
         let add = fn(x,y) {
@@ -501,7 +514,6 @@ mod tests {
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program().unwrap();
 
-            println!("{:?}", program.statements);
             assert_eq!(program.to_string(), result.to_string());
         }
     }

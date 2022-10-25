@@ -21,11 +21,9 @@ pub fn start<R: io::BufRead, W: io::Write>(mut read: R, mut writer: W) -> io::Re
 
         match result {
             Ok(program) => {
-                let objects = eval::evaluate_program(program);
-                for object in objects {
-                    writer.write(format!("{:?}\n", object.to_string()).as_bytes())?;
-                    writer.flush()?;
-                }
+                let object = eval::evaluate_program(program);
+                writer.write(format!("{:?}\n", object.to_string()).as_bytes())?;
+                writer.flush()?;
             }
             Err(errs) => {
                 for e in errs {

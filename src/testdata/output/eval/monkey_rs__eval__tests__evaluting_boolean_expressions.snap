@@ -10,6 +10,18 @@ expression: "&result"
         false,
     ),
     Bool(
+        true,
+    ),
+    Bool(
+        true,
+    ),
+    Bool(
+        false,
+    ),
+    Bool(
+        true,
+    ),
+    Bool(
         false,
     ),
     Bool(
@@ -20,5 +32,17 @@ expression: "&result"
     ),
     Bool(
         false,
+    ),
+    Bool(
+        true,
+    ),
+    Bool(
+        false,
+    ),
+    Bool(
+        false,
+    ),
+    Bool(
+        true,
     ),
 ]

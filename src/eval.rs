@@ -81,6 +81,13 @@ fn evaluate_infix_operator(left: Object, operator: &InfixOperator, right: Object
             InfixOperator::Equals => Object::Bool(left == right),
             InfixOperator::NotEquals => Object::Bool(left != right),
         },
+        (Object::Bool(left), Object::Bool(right)) => {
+            match operator {
+                InfixOperator::Equals => Object::Bool(left == right),
+                InfixOperator::NotEquals => Object::Bool(left != right),
+                _ => Object::Null,
+            }
+        }
         (_, _) => Object::Null,
     }
 }

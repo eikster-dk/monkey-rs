@@ -15,4 +15,7 @@ expression: "&result"
     Integer(
         10,
     ),
+    Integer(
+        10,
+    ),
 ]

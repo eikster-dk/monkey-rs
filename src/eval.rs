@@ -27,13 +27,26 @@ pub fn evaluate_program(program: Program) -> Object {
 }
 
 fn evaluate_statements(statements: &Vec<Statement>) -> Object {
-    println!("{:?}", statements);
     let mut result = Object::Null;
     for stmt in statements {
         result = evaluate_statement(stmt);
 
         match result {
             Object::Return(result) => return *result,
+            _ => (),
+        }
+    }
+
+    result
+}
+
+fn evaluate_block_statement(statements: &Vec<Statement>) -> Object {
+    let mut result = Object::Null;
+    for stmt in statements {
+        result = evaluate_statement(stmt);
+
+        match result {
+            Object::Return(_) => return result,
             _ => (),
         }
     }
@@ -112,11 +125,11 @@ fn evaluate_conditionals(
 ) -> Object {
     println!("hello");
     if is_truthy(condition) {
-        return evaluate_statements(consequence);
+        return evaluate_block_statement(consequence);
     }
 
     if !alternative.is_empty() {
-        return evaluate_statements(alternative);
+        return evaluate_block_statement(alternative);
     }
 
     Object::Null

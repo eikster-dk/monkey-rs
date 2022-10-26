@@ -40,7 +40,6 @@ impl<'a> Lexer<'a> {
         tok
     }
 
-
     fn read_char(&mut self) -> Option<char> {
         self.input.next()
     }
@@ -97,7 +96,7 @@ impl<'a> Lexer<'a> {
             Some(&'=') => {
                 self.input.next();
                 Token::Equal
-            },
+            }
             _ => Token::Assign,
         }
     }
@@ -107,7 +106,7 @@ impl<'a> Lexer<'a> {
             Some(&'=') => {
                 self.input.next();
                 Token::NotEqual
-            },
+            }
             _ => Token::Bang,
         }
     }
@@ -132,7 +131,7 @@ impl<'a> Iterator for Lexer<'a> {
 
         match tok {
             Token::EOF => None,
-            _ => Some(tok)
+            _ => Some(tok),
         }
     }
 }

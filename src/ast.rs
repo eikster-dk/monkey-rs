@@ -1,5 +1,5 @@
 use core::fmt;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Statement {
@@ -119,7 +119,6 @@ impl fmt::Display for InfixOperator {
         write!(f, "{}", s)
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Program {

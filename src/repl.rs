@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::{lexer::Lexer, parser::Parser};
+use crate::{eval, lexer::Lexer, parser::Parser};
 
 const PROMPT: &'static str = ">> ";
 
@@ -21,7 +21,8 @@ pub fn start<R: io::BufRead, W: io::Write>(mut read: R, mut writer: W) -> io::Re
 
         match result {
             Ok(program) => {
-                writer.write(format!("{:?}\n", program.to_string()).as_bytes())?;
+                let object = eval::evaluate_program(program);
+                writer.write(format!("{:?}\n", object.to_string()).as_bytes())?;
                 writer.flush()?;
             }
             Err(errs) => {

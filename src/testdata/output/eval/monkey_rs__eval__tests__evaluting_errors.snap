@@ -1,0 +1,33 @@
+---
+source: src/eval.rs
+expression: "&result"
+---
+[
+    Error(
+        "type mismatch Bool(true) + Integer(5)",
+    ),
+    Error(
+        "type mismatch Integer(5) + Bool(true)",
+    ),
+    Error(
+        "type mismatch Integer(5) + Bool(true)",
+    ),
+    Error(
+        "type mismatch: -Bool(true)",
+    ),
+    Error(
+        "unable to perform boolean + boolean",
+    ),
+    Error(
+        "unable to perform boolean + boolean",
+    ),
+    Error(
+        "unable to perform boolean / boolean",
+    ),
+    Error(
+        "unable to perform boolean * boolean",
+    ),
+    Error(
+        "unable to perform boolean - boolean",
+    ),
+]

@@ -7,6 +7,7 @@ pub enum Object {
     Integer(isize),
     Bool(bool),
     Return(Box<Object>),
+    Error(String),
     Null,
 }
 
@@ -16,6 +17,7 @@ impl fmt::Display for Object {
             Object::Integer(i) => i.to_string(),
             Object::Bool(b) => b.to_string(),
             Object::Return(value) => value.to_string(),
+            Object::Error(msg) => msg.to_string(),
             Object::Null => "null".to_string(),
         };
         write!(f, "{}", str)
@@ -33,6 +35,7 @@ fn evaluate_statements(statements: &Vec<Statement>) -> Object {
 
         match result {
             Object::Return(result) => return *result,
+            Object::Error(_) => return result,
             _ => (),
         }
     }
@@ -46,7 +49,7 @@ fn evaluate_block_statement(statements: &Vec<Statement>) -> Object {
         result = evaluate_statement(stmt);
 
         match result {
-            Object::Return(_) => return result,
+            Object::Return(_) | Object::Error(_) => return result,
             _ => (),
         }
     }
@@ -87,7 +90,7 @@ fn evaluate_prefix_expression(operator: &PrefixOperator, right: Object) -> Objec
     match operator {
         PrefixOperator::Minus => match right {
             Object::Integer(i) => Object::Integer(i * -1),
-            _ => Object::Null,
+            obj => Object::Error(format!("type mismatch: -{:?}", obj)),
         },
         PrefixOperator::Bang => match right {
             Object::Bool(b) => Object::Bool(!b),
@@ -112,9 +115,13 @@ fn evaluate_infix_operator(left: Object, operator: &InfixOperator, right: Object
         (Object::Bool(left), Object::Bool(right)) => match operator {
             InfixOperator::Equals => Object::Bool(left == right),
             InfixOperator::NotEquals => Object::Bool(left != right),
-            _ => Object::Null,
+            _ => {
+                Object::Error(format!("unable to perform boolean {} boolean", operator).to_string())
+            }
         },
-        (_, _) => Object::Null,
+        (left, right) => {
+            Object::Error(format!("type mismatch {:?} {} {:?}", left, operator, right).to_string())
+        }
     }
 }
 
@@ -123,7 +130,6 @@ fn evaluate_conditionals(
     consequence: &BlockStatement,
     alternative: &BlockStatement,
 ) -> Object {
-    println!("hello");
     if is_truthy(condition) {
         return evaluate_block_statement(consequence);
     }
@@ -193,4 +199,5 @@ mod tests {
         "./testdata/eval-conditionals.monkey"
     );
     snapshot!(evaluting_returns, "./testdata/eval-return.monkey");
+    snapshot!(evaluting_errors, "./testdata/eval-errors.monkey");
 }
